@@ -16,3 +16,12 @@
 /ROV_M33/STM32CubeIDE/CM33/NonSecure/CA35TDCID_m33_ns_sign/
 __pycache__/
 *.pyc
+
+# AI 辅助开发（Vibe Coding）工作文件：仅本地保留，不入库
+VibePrompt.md
+.vibestate.md
+vibeplan.md
+*提示词*.md
+Salacia_Terminal/HANDOFF.md
+ROV_M33/AGENTS.md
+Salacia_Terminal/Salacia_Terminal_*.md
