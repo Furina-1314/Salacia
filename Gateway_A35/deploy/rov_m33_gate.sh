@@ -7,10 +7,19 @@
 #     self-test: its final step re-latches the global stop, so outputs stay
 #     disabled when the gateway comes up. A second failure is a real fault
 #     (systemd rate limiting then guards the loop).
+# [m33] dyp_expected=0 in rov_gateway.ini declares the DYP module absent:
+# its self-test failure degrades to WARN so the gate can pass. Every other
+# check stays FAIL=0 strict. Flip back to 1 once the module is reconnected.
 SELF_TEST=/home/root/rov_control/build/rov_self_test
 FW_SCRIPT=/home/root/ROV_M33/lib/fw_cortex_m33.sh
+CONFIG=/etc/rov_gateway.ini
 
-if "$SELF_TEST"; then
+DYP_ARGS=""
+if grep -qE '^\s*dyp_expected\s*=\s*0\s*$' "$CONFIG" 2>/dev/null; then
+    DYP_ARGS="--expect-dyp=0"
+fi
+
+if "$SELF_TEST" $DYP_ARGS; then
     exit 0
 fi
 
@@ -20,4 +29,4 @@ if ! "$FW_SCRIPT" start; then
     exit 1
 fi
 sleep 2
-exec "$SELF_TEST"
+exec "$SELF_TEST" $DYP_ARGS
