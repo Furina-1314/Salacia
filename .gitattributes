@@ -1,0 +1,16 @@
+# GitHub Linguist 语言统计配置
+# 以下目录为随仓库分发的第三方/vendored 代码或工具链，不计入项目语言构成
+ROV_M33/Tools/python/** linguist-vendored=true
+ROV_M33/Tools/python/** linguist-detectable=false
+Gateway_A35/vendor/** linguist-vendored=true
+Gateway_A35/vendor/** linguist-detectable=false
+Salacia_Terminal/src/ui/3rd/** linguist-vendored=true
+Salacia_Terminal/src/ui/3rd/** linguist-detectable=false
+
+# 模板遗留文件与会话辅助脚本不计入语言统计
+/ROV_M33/readme.html -linguist-detectable
+/.zcode_burst_test.py -linguist-detectable
+/.zcode_ssh_board.py -linguist-detectable
+
+# 文档类 Markdown 不计入语言统计
+*.md linguist-documentation
