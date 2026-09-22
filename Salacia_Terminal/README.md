@@ -1,6 +1,15 @@
 # Salacia Terminal —— ROV 水下机器人岸上终端
 
-Windows 桌面端上位机（Qt Widgets），为 STM32MP257 水下机器人提供：
+## 工程介绍
+
+Windows 桌面端一体化操作终端（Qt Widgets / C++），是 Salacia 水下机器人的"驾驶舱"：观察（实时图传 + AI 识别）、操控（10 舵机 + 6 推进器 + 模式联锁）、感知（三维姿态 + 舱内遥测）与安全（告警、确认、回退）统一于一个 Fluent 风格界面。经 Wi-Fi 浮标与板端 Gateway_A35 通信，遵循"双盲"三层架构——本工程只理解 Windows↔A35 业务协议，不感知 M33 与 RPMsg。
+
+```text
+本工程 ──TCP :7000 (CRC16/seq-ACK 二进制帧)──▶ Gateway_A35 ──RPMsg──▶ M33
+       ◀──UDP :5001 遥测──────┘  └──UDP :5000 RTP/H.264 图传──▶ 本工程
+```
+
+## 功能总览
 
 | 功能 | 说明 |
 |------|------|
@@ -69,16 +78,9 @@ xcopy F:/onnxruntime/directml-1.24.4/bin\*.dll . /Y
 目标机性能基线（Iris Xe 核显 + DirectML，720p@30 推流 + 20Hz 遥测 + 推理并发实测）：
 视频 29.9fps 零丢帧、单帧推理 3ms、整机 CPU 约 1.5%，退出码干净 0x0。
 
-## SSH 运行时移除清单（Phase 5）
+## 历史：SSH 遥控通道移除（Phase 5）
 
-原经 SSH（libssh）下发 `pwm <id> <us>` 的遥控通道已于本轮**完全移除**，控制统一走
-Windows↔A35 TCP（见 docs/WINDOWS_A35_INTERFACE.md）：
-
-- 删除 `src/communication/SshClient.h/.cpp`、`src/widgets/ControlPanelWidget.h/.cpp`
-- CMake：libssh 发现/链接块、`SALACIA_SSH_LINK`、相关注释全部移除（不再依赖 `F:/libssh-0.12.2-msvc`）
-- ini：`[rov] ssh_host/ssh_port/ssh_user/ssh_password/ssh_key_path/ssh_reconnect_sec` 作废删除；
-  AppConfig 对应 getter 移除；状态栏 SSH 标签移除
-- 迁移：舵机/推进器控制改经 `[tcp]` 通道（`set servo/propeller` 系列），无回退路径
+原经 SSH（libssh）下发 `pwm <id> <us>` 的遥控通道已**完全移除**（`SshClient`、`ControlPanelWidget`、libssh 链接与 `[rov] ssh_*` 配置全部删除），控制统一走 Windows↔A35 TCP 通道（`set servo/propeller` 系列），无回退路径。决策细节见 git 历史（Phase 5）与 `DELIVERY_REPORT.md`。
 
 ## 板端对接协议
 
@@ -163,12 +165,30 @@ salacia_tests_appconfig.exe & salacia_tests_wire.exe & salacia_tests_registry.ex
 真实窗口尺寸 GUI/Phase6 全量回归与性能）。测试 exe 为 WIN32 子系统，
 建议 `-o 文件,txt` 或 ctest 方式运行。
 
-## 架构要点（工业级多线程）
+## 架构
+
+线程模型遵循工业级多线程实践，GUI 线程零阻塞 I/O：
+
+```text
+┌─ GUI 线程 ─────────────────────────────────────────────────┐
+│ MainWindow · 四页视图 · ControlViewModel · SafetyStateModel │
+│ AlarmModel · SensorModel / RovVizModel(Quick3D) · 视频控件   │
+└─────▲─────────────────────────▲──────────────────▲─────────┘
+      │    跨线程 UI 更新一律显式 QueuedConnection │
+┌─────┴──────────┐  ┌───────────┴──────────┐  ┌─────┴────────────┐
+│ 视频解码线程     │  │ AI 推理线程            │  │ 通信线程           │
+│ GStreamerPipeline│SPSC│ IModelInfer /      │  │ TcpClient         │
+│ (断流自愈重建)   │─▶Ring│ OnnxInferEngine   │  │ (CRC16/seq-ACK/   │
+│ → VideoFrameHub │Buf  │ (后端动态探测)      │  │  双优先级队列/退避) │
+│ 最新帧发布层     │  └──────────────────────┘  │ UdpReceiver        │
+└─────┬──────────┘                             │ (视频+遥测四重校验) │
+      └──────────── 多视图零拷贝共享 ─────────────┴────────┬────────┘
+                 MPU6500Processor(Mahony 姿态解算) ◀──────┘
+        共享状态仓库：std::shared_mutex + std::atomic，alignas(64) 防伪共享
+```
 
 - 全部常驻任务 Worker-Object 模式（QObject + moveToThread，事件驱动），不重写 QThread::run()
 - 视频解码线程 → AI 推理线程：无锁 SPSC RingBuffer（drain-latest 保低延迟）
-- 传感器/检测共享状态：std::shared_mutex 读写锁 + std::atomic 链路标量，alignas(64) 防伪共享
-- 跨线程 UI 更新一律信号槽显式 QueuedConnection；GUI 线程零阻塞 I/O
 - 退出逆序：停网络 → 自终结 + 限时阶梯停工作线程 → 释放 GPU/ONNX 上下文
 
 ## 目录结构
