@@ -10,3 +10,9 @@
 /Salacia_Terminal/logs/
 /.vs
 *.obj
+
+# ROV_M33 本地缓存与构建产物
+/ROV_M33/.vs/
+/ROV_M33/STM32CubeIDE/CM33/NonSecure/CA35TDCID_m33_ns_sign/
+__pycache__/
+*.pyc

@@ -1,0 +1,36 @@
+# STM32CubeIDE workspace and host-local state
+/.cubeide-configuration/
+/.cubeide-headless-config/
+/.cubeide-workspace/
+**/.metadata/
+
+# Formal and ad-hoc build outputs
+/STM32CubeIDE/CM33/NonSecure/CA35TDCID_m33_ns_sign/
+**/Debug/
+**/Release/
+*.elf
+*.bin
+*.hex
+*.srec
+*.map
+*.o
+*.obj
+*.d
+*.su
+*.cyclo
+*.exe
+__pycache__/
+*.py[cod]
+
+# Local comparison, export, and temporary output
+/tmp/
+/output/
+/*.zip
+*.tmp
+*.bak
+*.log
+
+# Operating-system/editor noise
+Thumbs.db
+.DS_Store
+*~
